@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@theme {
+  /* On définit ici nos couleurs DGTCP personnalisées pour la v4 */
+  --color-brand-dark: #1E293B;
+  --color-brand-blue: #3B82F6;
+  --color-anomalie: #EF4444;
+  --color-overpayment: #F97316;
+  
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+}
+
+:root {
+  --background: 210 40% 98%;
+  --foreground: 222.2 84% 4.9%;
+  
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+ 
+  --primary: 222.2 47.4% 11.2%;
+  --primary-foreground: 210 40% 98%;
+  
+  --radius: 0.75rem;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900;
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Animations personnalisées */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
