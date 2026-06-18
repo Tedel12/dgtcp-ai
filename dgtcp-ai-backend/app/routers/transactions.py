@@ -38,6 +38,9 @@ async def list_transactions(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
+    if current_user.role == RoleEnum.ADMIN:
+        raise HTTPException(status_code=403, detail="Accès réservé aux rôles opérationnels")
+    
     query = db.query(Transaction)
 
     # ── Filtres ──────────────────────────────────────────────────────────────

@@ -30,6 +30,15 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Ergonomie : Curseur main sur les boutons et liens */
+button, a, select, [role="button"] {
+  cursor: pointer !important;
+}
+
+.lucide {
+  @apply cursor-pointer;
+}
+
 /* Animations personnalisées */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }

@@ -8,8 +8,10 @@ from typing import Optional
 
 from app.database import get_db
 from app.models.utilisateur import Utilisateur, RoleEnum
+from app.models.audit import AuditLog
 from app.schemas.auth import Token, UtilisateurPublic, LoginRequest, SignupRequest
 from app.config import settings
+
 
 router = APIRouter(prefix="/auth", tags=["Authentification"])
 
@@ -71,6 +73,17 @@ async def login(form_data: LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=403, detail="Compte désactivé")
 
     token = create_access_token(data={"sub": str(user.id)})
+    
+    # Audit log
+    audit = AuditLog(
+        utilisateur_id=user.id,
+        action="CONNEXION",
+        entite="UTILISATEUR",
+        details={"email": user.email}
+    )
+    db.add(audit)
+    db.commit()
+
     return Token(
         access_token=token,
         token_type="bearer",

@@ -1,7 +1,7 @@
 """
 Router Prévisions budgétaires — page Prévisions du dashboard
 """
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime
@@ -21,6 +21,9 @@ async def previsions_tresorerie(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
+    if current_user.role not in [RoleEnum.DIRECTEUR, RoleEnum.ANALYSTE_FINANCIER]:
+        raise HTTPException(status_code=403, detail="Accès réservé aux analystes et à la direction")
+    
     now = datetime.utcnow()
     year = now.year
 

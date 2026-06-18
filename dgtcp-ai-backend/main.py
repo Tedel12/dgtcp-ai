@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 
 from app.config import settings
 from app.database import create_tables, SessionLocal
-from app.routers import auth, dashboard, transactions, anomalies, alertes, rapports, predictions, users, data
+from app.routers import auth, dashboard, transactions, anomalies, alertes, rapports, predictions, users, data, search, audit
 
 
 @asynccontextmanager
@@ -53,7 +53,15 @@ app = FastAPI(
 # ── CORS (autorise le frontend React en dev) ──────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000"],
+    allow_origins=[
+        "http://localhost:3000", 
+        "http://localhost:5173", 
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -63,6 +71,7 @@ app.add_middleware(
 PREFIX = "/api"
 
 app.include_router(auth.router,          prefix=PREFIX)
+app.include_router(search.router,        prefix=PREFIX)
 app.include_router(dashboard.router,     prefix=PREFIX)
 app.include_router(transactions.router,  prefix=PREFIX)
 app.include_router(anomalies.router,     prefix=PREFIX)
@@ -71,6 +80,7 @@ app.include_router(rapports.router,      prefix=PREFIX)
 app.include_router(predictions.router,   prefix=PREFIX)
 app.include_router(users.router,         prefix=PREFIX)
 app.include_router(data.router,          prefix=PREFIX)
+app.include_router(audit.router,         prefix=PREFIX)
 
 
 # ── Health check ──────────────────────────────────────────────────────────────

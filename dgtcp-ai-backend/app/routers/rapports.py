@@ -1,18 +1,22 @@
 """
 Router Rapports — Analyse & Rapports (page dédiée du dashboard)
 """
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException, Response
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from datetime import datetime
 from typing import Optional
 import calendar
-
-from app.database import get_db
-from app.routers.auth import get_current_user
-from app.models.utilisateur import Utilisateur
+import pandas as pd
+import io
+from app.models.utilisateur import Utilisateur, RoleEnum
 from app.models.transaction import Transaction, TypeTransaction
 from app.models.anomalie import Anomalie, NiveauRisque
+from app.services.pdf_generator import generer_rapport_pdf
+from app.routers.dashboard import get_kpi
+from app.database import get_db
+from app.routers.auth import get_current_user
 
 router = APIRouter(prefix="/rapports", tags=["Analyse & Rapports"])
 
@@ -24,6 +28,9 @@ async def depenses_par_ministere(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
+    if current_user.role == RoleEnum.COMPTABLE:
+         raise HTTPException(status_code=403, detail="Accès réservé à la direction et aux auditeurs")
+    
     query = db.query(
         Transaction.ministere,
         func.sum(Transaction.montant).label("total"),
@@ -117,6 +124,85 @@ async def evolution_mensuelle(
         })
 
     return resultats
+
+
+@router.get("/export/transactions", summary="Exporter les transactions (Excel/CSV)")
+async def export_transactions(
+    format: str = Query("excel", enum=["excel", "csv"]),
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(get_current_user),
+):
+    if current_user.role not in [RoleEnum.DIRECTEUR, RoleEnum.COMPTABLE, RoleEnum.CONTROLEUR_FINANCIER, RoleEnum.AUDITEUR]:
+        raise HTTPException(status_code=403, detail="Non autorisé à exporter les données")
+
+    # Récupérer toutes les transactions
+    txs = db.query(Transaction).all()
+    
+    data = []
+    for t in txs:
+        data.append({
+            "Référence": t.reference,
+            "Ministère": t.ministere,
+            "Fournisseur": t.fournisseur,
+            "Montant (FCFA)": t.montant,
+            "Montant Prévu (FCFA)": t.montant_prevu,
+            "Dépassement": (t.montant - t.montant_prevu) if t.montant_prevu else 0,
+            "Date": t.date_transaction.strftime("%d/%m/%Y"),
+            "Statut": t.statut.value,
+            "Score Risque (%)": t.score_risque,
+            "Est Anomalie": "Oui" if t.est_anomalie else "Non"
+        })
+    
+    df = pd.DataFrame(data)
+    
+    output = io.BytesIO()
+    if format == "csv":
+        df.to_csv(output, index=False, encoding='utf-8-sig')
+        media_type = "text/csv"
+        filename = f"transactions_dgtcp_{datetime.now().strftime('%Y%m%d')}.csv"
+    else:
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Transactions')
+        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        filename = f"transactions_dgtcp_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    
+    output.seek(0)
+    return StreamingResponse(
+        output, 
+        media_type=media_type, 
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@router.get("/rapport-executif", summary="Générer le rapport PDF Stratégique")
+async def rapport_executif(
+    db: Session = Depends(get_db),
+    current_user: Utilisateur = Depends(get_current_user),
+):
+    if current_user.role not in [RoleEnum.DIRECTEUR, RoleEnum.ADMIN]:
+        raise HTTPException(status_code=403, detail="Seule la direction peut générer ce rapport")
+
+    # 1. Récupérer les stats réelles via le router dashboard
+    stats = await get_kpi(db=db, current_user=current_user)
+    stats_dict = stats.model_dump()
+
+    # 2. Récupérer les 5 anomalies les plus critiques (Score max)
+    top_anomalies = (
+        db.query(Anomalie)
+        .filter(Anomalie.statut == "non_traite")
+        .order_by(desc(Anomalie.score_risque))
+        .limit(5)
+        .all()
+    )
+
+    # 3. Générer le PDF
+    pdf_buffer = generer_rapport_pdf(stats_dict, top_anomalies)
+    
+    return Response(
+        content=pdf_buffer.getvalue(),
+        media_type="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=Rapport_Strategique_DGTCP.pdf"}
+    )
 
 
 

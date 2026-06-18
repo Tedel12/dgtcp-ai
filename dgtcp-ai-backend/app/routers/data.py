@@ -17,11 +17,14 @@ from app.models.anomalie import Anomalie
 router = APIRouter(prefix="/data", tags=["Data Collector"])
 
 @router.post("/import", summary="Importer un fichier CSV de transactions")
-async def import_transactions(
+async def import_data(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: Utilisateur = Depends(get_current_user),
+    current_user: Utilisateur = Depends(get_current_user)
 ):
+    if current_user.role == RoleEnum.ADMIN:
+        raise HTTPException(status_code=403, detail="L'administrateur ne peut pas importer de données opérationnelles")
+
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="Seuls les fichiers CSV sont acceptés")
 

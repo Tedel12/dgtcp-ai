@@ -103,6 +103,20 @@ const Dashboard: React.FC = () => {
     }
   });
 
+  const handleExportPDF = async () => {
+    try {
+      const response = await api.get('/rapports/rapport-executif', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'Rapport_Strategique_DGTCP.pdf');
+      document.body.appendChild(link);
+      link.click();
+    } catch (err) {
+      console.error("Erreur lors de l'export PDF", err);
+    }
+  };
+
   // 2. Fetch Real Alerts (Recent)
   const { data: alertsData, isLoading: alertsLoading } = useQuery({
     queryKey: ['recent-alerts'],
@@ -145,7 +159,10 @@ const Dashboard: React.FC = () => {
             <Filter className="w-4 h-4 text-slate-400" />
             <span>Période : Ce mois</span>
           </button>
-          <button className="flex items-center space-x-2 px-6 py-3 bg-slate-900 text-white rounded-2xl text-[13px] font-bold hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 active:scale-95">
+          <button 
+            onClick={handleExportPDF}
+            className="flex items-center space-x-2 px-6 py-3 bg-slate-900 text-white rounded-2xl text-[13px] font-bold hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 active:scale-95"
+          >
             <Download className="w-4 h-4" />
             <span>Rapport Stratégique</span>
           </button>

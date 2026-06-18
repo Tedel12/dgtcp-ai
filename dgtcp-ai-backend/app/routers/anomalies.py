@@ -10,6 +10,7 @@ from app.database import get_db
 from app.routers.auth import get_current_user
 from app.models.utilisateur import Utilisateur
 from app.models.anomalie import Anomalie, TypeAnomalie, NiveauRisque, StatutAnomalie
+from app.models.audit import AuditLog
 from app.models.transaction import Transaction
 from app.schemas.anomalie import AnomalieOut, AnomalieUpdate, AnomalieListResponse
 from datetime import datetime
@@ -41,6 +42,9 @@ async def list_anomalies(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
+    if current_user.role == RoleEnum.ADMIN:
+        raise HTTPException(status_code=403, detail="Accès réservé aux rôles opérationnels")
+    
     query = db.query(Anomalie).options(joinedload(Anomalie.transaction))
 
     if type_anomalie:
@@ -138,4 +142,16 @@ async def update_anomalie(
 
     db.commit()
     db.refresh(anomalie)
+
+    # Log audit
+    audit = AuditLog(
+        utilisateur_id=current_user.id,
+        action=f"VALIDATION_{anomalie.statut.upper()}",
+        entite="ANOMALIE",
+        entite_id=anomalie.id,
+        details={"reference": anomalie.reference, "nouveau_statut": anomalie.statut}
+    )
+    db.add(audit)
+    db.commit()
+
     return AnomalieOut(**_enrichir(anomalie))

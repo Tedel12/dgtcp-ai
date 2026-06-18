@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Search, Filter, ArrowUpRight, ArrowDownRight, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Search, Filter, ArrowUpRight, ArrowDownRight, ShieldCheck, AlertTriangle, Download } from 'lucide-react';
 import api from '../api/client';
 import { Transaction } from '../types/transaction';
 import { format } from 'date-fns';
@@ -19,6 +19,20 @@ const Transactions: React.FC = () => {
     }
   });
 
+  const handleExport = async (format: 'excel' | 'csv') => {
+    try {
+      const response = await api.get(`/rapports/export/transactions?format=${format}`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `transactions_dgtcp.${format === 'excel' ? 'xlsx' : 'csv'}`);
+      document.body.appendChild(link);
+      link.click();
+    } catch (err) {
+      console.error("Erreur lors de l'export", err);
+    }
+  };
+
   if (isLoading) return <div className="text-center py-20 font-bold text-slate-500">Chargement des transactions...</div>;
 
   return (
@@ -28,14 +42,22 @@ const Transactions: React.FC = () => {
           <h2 className="text-2xl font-bold text-slate-900">Registre des Transactions</h2>
           <p className="text-slate-500 text-sm">Visualisation des flux financiers de la DGTCP</p>
         </div>
-        <div className="flex bg-white p-1 rounded-xl border border-slate-200">
-          <input 
-            placeholder="Rechercher par fournisseur..."
-            className="px-4 py-2 text-sm outline-none w-64"
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <button className="p-2 text-slate-400 hover:text-slate-900 transition-colors">
-            <Search className="w-5 h-5" />
+        <div className="flex items-center space-x-3">
+          <div className="flex bg-white p-1 rounded-xl border border-slate-200">
+            <input 
+              placeholder="Rechercher par fournisseur..."
+              className="px-4 py-2 text-sm outline-none w-64"
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <button className="p-2 text-slate-400 hover:text-slate-900 transition-colors">
+              <Search className="w-5 h-5" />
+            </button>
+          </div>
+          <button 
+            onClick={() => handleExport('excel')}
+            className="p-3 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-all title='Exporter en Excel'"
+          >
+            <Download className="w-5 h-5" />
           </button>
         </div>
       </div>

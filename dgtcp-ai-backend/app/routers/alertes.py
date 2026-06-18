@@ -29,6 +29,9 @@ async def list_alertes(
     db: Session = Depends(get_db),
     current_user: Utilisateur = Depends(get_current_user),
 ):
+    if current_user.role == RoleEnum.ADMIN:
+        raise HTTPException(status_code=403, detail="L'administrateur n'a pas accès au flux d'alertes opérationnelles")
+    
     query = db.query(Alerte)
 
     if niveau:

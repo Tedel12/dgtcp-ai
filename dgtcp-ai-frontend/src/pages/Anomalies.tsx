@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   CheckCircle, 
   XCircle, 
-  Filter
+  Filter,
+  Download
 } from 'lucide-react';
 import api from '../api/client';
 import { StatutAnomalie, NiveauRisque } from '../types/anomalie';
@@ -23,6 +24,20 @@ const Anomalies: React.FC = () => {
       return res.data;
     }
   });
+
+  const handleExport = async (format: 'excel' | 'csv') => {
+    try {
+      const response = await api.get(`/rapports/export/anomalies?format=${format}`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `anomalies_dgtcp.${format === 'excel' ? 'xlsx' : 'csv'}`);
+      document.body.appendChild(link);
+      link.click();
+    } catch (err) {
+      console.error("Erreur lors de l'export", err);
+    }
+  };
 
   const mutation = useMutation({
     mutationFn: (data: { id: number, statut: StatutAnomalie, note_traitement: string }) => 
@@ -53,15 +68,23 @@ const Anomalies: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-slate-900">Centre de Traitement des Anomalies</h2>
-        <select 
-          className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500/20"
-          onChange={(e) => setFilter(e.target.value)}
-        >
-          <option value="">Tous les statuts</option>
-          <option value={StatutAnomalie.NON_TRAITE}>Non traitées</option>
-          <option value={StatutAnomalie.TRAITE}>Traitées (Validées)</option>
-          <option value={StatutAnomalie.FAUX_POSITIF}>Faux Positifs (Rejetées)</option>
-        </select>
+        <div className="flex items-center space-x-3">
+          <select 
+            className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500/20"
+            onChange={(e) => setFilter(e.target.value)}
+          >
+            <option value="">Tous les statuts</option>
+            <option value={StatutAnomalie.NON_TRAITE}>Non traitées</option>
+            <option value={StatutAnomalie.TRAITE}>Traitées (Validées)</option>
+            <option value={StatutAnomalie.FAUX_POSITIF}>Faux Positifs (Rejetées)</option>
+          </select>
+          <button 
+            onClick={() => handleExport('excel')}
+            className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-all title='Exporter en Excel'"
+          >
+            <Download className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       <AnimatePresence>
